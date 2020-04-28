@@ -58,12 +58,13 @@ ramen_good <- ramen_bayes_av %>%
   ) %>%
   select(-country) %>% 
   # lump brands 
-  mutate(brand = fct_lump(brand, 20)) %>%
+  mutate(brand = fct_lump(brand, 40)) %>%
   replace_na(list(style = "Other")) %>%
   mutate(brand = fct_relevel(brand, "Other")) %>% 
   # I am interested in what makes a ramen a good ramen. For this, we don't need all 
-  # the rating data. Instead, we can split the data in good and bad ramen (binary)
-  mutate(bayes_average = if_else(bayes_average >= 4, "Good", "Bad"), 
+  # the rating data. Instead, we can split the data in better than average and worse
+  # we previously defined m as the average
+  mutate(bayes_average = if_else(bayes_average >= m, "Good", "Bad"), 
          bayes_average = factor(bayes_average, levels = c("Good", "Bad")))
 
 
@@ -74,7 +75,7 @@ set.seed(seed = 123)
 
 # split it up using the outcome for stratified sampling
 tt_split <- ramen_good %>% 
-  initial_split(prop = 0.75, strata = "bayes_average")
+  initial_split(prop = 0.8, strata = "bayes_average")
   
 # assign it to train and test
 train <- tt_split %>% training() 
@@ -83,9 +84,11 @@ test  <- tt_split %>% testing()
 
 # Recipe ------------------------------------------------------------------
 
-recipe_prepped <- recipe(bayes_average ~ ., data = train) %>%
-  step_string2factor(all_nominal(), -all_outcomes()) %>%
-  prep(train)
+recipe_glm <- recipe(bayes_average ~ ., data = train) %>%
+  step_string2factor(all_nominal(), -all_outcomes()) 
+
+# prep it
+recipe_prepped <- recipe_glm %>% prep(train)
 
 # bake it
 train_baked <- bake(recipe_prepped, new_data = train)
@@ -110,7 +113,42 @@ predictions_glm %>%
   conf_mat(bayes_average, .pred_class) 
 
 # accuracy
-predictions_glm %>%
+glm_accuracy <- predictions_glm %>%
   metrics(bayes_average, .pred_class) %>%
   select(-.estimator) %>%
-  filter(.metric == "accuracy") 
+  filter(.metric == "accuracy") %>% 
+  pull() %>% round(2)
+
+# precision 
+glm_precision <- precision(predictions_glm, bayes_average, .pred_class) %>%
+  select(.estimate) %>% 
+  pull() %>% round(2)
+
+# recall 
+glm_recall <- recall(predictions_glm, bayes_average, .pred_class) %>%
+  select(.estimate) %>% 
+  pull() %>% round(2)
+
+# F1 score
+glm_f1score <- predictions_glm %>%
+  f_meas(bayes_average, .pred_class) %>%
+  select(-.estimator) %>% 
+  pull() %>% round(2)
+
+
+
+# Random forest -----------------------------------------------------------
+
+# ten fold cross-validation
+cross_val <- vfold_cv(train, v = 10)
+
+# Update the recipe
+# a random forest needs all character/factor variables to be “dummified”. 
+# This is done by updating the recipe.
+recipe_prepped <- recipe_glm %>% 
+  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  prep(train)
+
+# We need to add an extra step before the recipe “prepping” to maps the 
+# cross validation splits to the analysis and assessment functions. 
+# This will guide the iterations through the 10 folds
