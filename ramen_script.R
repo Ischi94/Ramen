@@ -136,19 +136,29 @@ glm_f1score <- predictions_glm %>%
   pull() %>% round(2)
 
 
+# make data frame
+mdl_performance <- tibble(my_estimate = c(glm_accuracy, glm_precision, 
+                                          glm_recall, glm_f1score), 
+                          type = c("accuracy", "precision", "recall", "f1score"))
 
-# Random forest -----------------------------------------------------------
+ggplot(mdl_performance) +
+  geom_col(aes(type, my_estimate), width = 0.1, 
+           fill = "#A0522D", colour = "grey60") +
+  scale_y_continuous(NULL, expand = c(0, 0), limits = c(0,1)) +
+  annotate(geom = "text", x = 2.5, y = 0.25, label = "25%", 
+           colour = "grey30", size = 3.5) +
+  annotate(geom = "text", x = 2.5, y = 0.5, label = "50%", 
+           colour = "grey30", size = 3.5) +
+  annotate(geom = "text", x = 2.5, y = 0.75, label = "75%", 
+           colour = "grey30", size = 3.5) +
+  annotate(geom = "text", x = 2.5, y = 1, label = "100%", 
+           colour = "grey30", size = 3.5) +
+  coord_polar() +
+  theme_void() +
+  theme(panel.grid.major.y = element_line(colour = "grey80", linetype = "dotted"), 
+        axis.text.x = element_text(colour = "grey30")) +
+  labs(title = "Performance of logistic regression predicting ramen ratings", 
+       subtitle = "Ratings were transformed using bayesian averages", 
+       caption = "theramenrater.com\nGregor Mathes\n28.04.2020")
 
-# ten fold cross-validation
-cross_val <- vfold_cv(train, v = 10)
 
-# Update the recipe
-# a random forest needs all character/factor variables to be “dummified”. 
-# This is done by updating the recipe.
-recipe_prepped <- recipe_glm %>% 
-  step_dummy(all_nominal(), -all_outcomes()) %>% 
-  prep(train)
-
-# We need to add an extra step before the recipe “prepping” to maps the 
-# cross validation splits to the analysis and assessment functions. 
-# This will guide the iterations through the 10 folds
