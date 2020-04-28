@@ -1,5 +1,6 @@
 library(tidyverse)
 library(tidymodels)
+library(ggimage)
 
 # download data
 ramen_ratings <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-06-04/ramen_ratings.csv")
@@ -139,26 +140,31 @@ glm_f1score <- predictions_glm %>%
 # make data frame
 mdl_performance <- tibble(my_estimate = c(glm_accuracy, glm_precision, 
                                           glm_recall, glm_f1score), 
-                          type = c("accuracy", "precision", "recall", "f1score"))
+                          type = c("Accuracy", "Precision", "Recall", "F1 Score"))
 
-ggplot(mdl_performance) +
+# load background image
+img <-  "https://cdn.pixabay.com/photo/2019/11/01/05/57/ramen-4593402_1280.jpg"
+
+ramen_plot <- ggplot(mdl_performance) +
   geom_col(aes(type, my_estimate), width = 0.1, 
-           fill = "#A0522D", colour = "grey60") +
+           fill = "#FFC87E", colour = "black") +
   scale_y_continuous(NULL, expand = c(0, 0), limits = c(0,1)) +
   annotate(geom = "text", x = 2.5, y = 0.25, label = "25%", 
-           colour = "grey30", size = 3.5) +
+           colour = "#FFC87E", size = 3.5, fontface =2) +
   annotate(geom = "text", x = 2.5, y = 0.5, label = "50%", 
-           colour = "grey30", size = 3.5) +
+           colour = "#FFC87E", size = 3.5, fontface =2) +
   annotate(geom = "text", x = 2.5, y = 0.75, label = "75%", 
-           colour = "grey30", size = 3.5) +
+           colour = "#FFC87E", size = 3.5, fontface =2) +
   annotate(geom = "text", x = 2.5, y = 1, label = "100%", 
-           colour = "grey30", size = 3.5) +
+           colour = "#FFC87E", size = 3.5, fontface =2) +
   coord_polar() +
   theme_void() +
-  theme(panel.grid.major.y = element_line(colour = "grey80", linetype = "dotted"), 
-        axis.text.x = element_text(colour = "grey30")) +
-  labs(title = "Performance of logistic regression predicting ramen ratings", 
-       subtitle = "Ratings were transformed using bayesian averages", 
-       caption = "theramenrater.com\nGregor Mathes\n28.04.2020")
+  theme(panel.grid.major.y = element_line(colour = "#FCFAF1", 
+                                          linetype = "dotted", size = 1.2), 
+        axis.text.x = element_text(colour = "#E34F33", face = "bold"), 
+        plot.title = element_text(colour = "#FCFAF1")) +
+  labs(title = "Ramen rating prediction performance")  
 
+ramen_plot <- ggbackground(ramen_plot, img)
 
+ggsave(plot = ramen_plot, filename = "ramen_plot.png")
